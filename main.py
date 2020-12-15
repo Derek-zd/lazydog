@@ -99,13 +99,13 @@ def height(threadName, delay):
     logger = logging.getLogger("height")
     logger.info("start get chain height")
     db_info = readConf_db()
-    # 打开数据库连接
-    conn = pymysql.connect(db_info['db_host'], db_info['db_user'], db_info['db_password'], db=db_info['db_name'],
-                           port=db_info['db_port'])
-    cursor = conn.cursor()
-    logger.info(cursor)
+
     # 获取minerID
     while 1:
+        conn = pymysql.connect(db_info['db_host'], db_info['db_user'], db_info['db_password'], db=db_info['db_name'],
+                               port=db_info['db_port'])
+        cursor = conn.cursor()
+        logger.info(cursor)
         # 获取tipset和chainhead
         chainhead = daemon_get_json("ChainHead", [])
         height = chainhead["result"]["Height"]
@@ -114,11 +114,15 @@ def height(threadName, delay):
         cursor.execute(sql)
         logger.info("高度插入成功")
         conn.commit()
+        conn.close()
         time.sleep(30)
 
 
-def miner(cursor_miner):
-
+def miner():
+    db_info = readConf_db()
+    conn_miner = pymysql.connect(db_info['db_host'], db_info['db_user'], db_info['db_password'], db=db_info['db_name'],
+                                 port=db_info['db_port'])
+    cursor_miner = conn_miner.cursor()
     # 获取 miner 信息
     # 获取 miner id
     actoraddress = miner_get_json("ActorAddress", [])
@@ -190,8 +194,9 @@ def miner(cursor_miner):
             miner_id, sector, state, pledged, deals, verified_weight, state, pledged, deals, verified_weight)
         cursor_miner.execute(sql)
         conn_miner.commit()
+        logger.info("更新sector:{}状态成功".format(sector))
     logger.info("更新sector状态成功")
-
+    conn_miner.close()
 
 # 按间距中的绿色按钮以运行脚本。
 if __name__ == '__main__':
@@ -214,12 +219,8 @@ if __name__ == '__main__':
 
     _thread.start_new_thread(height, ("height", 2))
 
-    db_info = readConf_db()
-    conn_miner = pymysql.connect(db_info['db_host'], db_info['db_user'], db_info['db_password'], db=db_info['db_name'],
-                                 port=db_info['db_port'])
-    cursor_miner = conn_miner.cursor()
 
     while 1:
-       miner(cursor_miner)
+       miner()
 
 # 访问 https://www.jetbrains.com/help/pycharm/ 获取 PyCharm 帮助
