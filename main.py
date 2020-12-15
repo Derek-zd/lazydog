@@ -102,14 +102,14 @@ def height(threadName, delay):
     # 打开数据库连接
     conn = pymysql.connect(db_info['db_host'], db_info['db_user'], db_info['db_password'], db=db_info['db_name'],
                            port=db_info['db_port'])
+    cursor = conn.cursor()
+    logger.info(cursor)
     # 获取minerID
     while 1:
         # 获取tipset和chainhead
         chainhead = daemon_get_json("ChainHead", [])
         height = chainhead["result"]["Height"]
         logger.info("当前高度:{}".format(height))
-        cursor = conn.cursor()
-        logger.info(cursor)
         sql = "update chain_height set  height = {} ;".format(height)
         cursor.execute(sql)
         logger.info("高度插入成功")
@@ -117,14 +117,8 @@ def height(threadName, delay):
         time.sleep(30)
 
 
-def miner():
-    db_info = readConf_db()
-    # 打开数据库连接
+def miner(cursor_miner):
 
-    conn_miner = pymysql.connect(db_info['db_host'], db_info['db_user'], db_info['db_password'], db=db_info['db_name'],
-                                 port=db_info['db_port'])
-    cursor_miner = conn_miner.cursor()
-    logger.info(cursor_miner)
     # 获取 miner 信息
     # 获取 miner id
     actoraddress = miner_get_json("ActorAddress", [])
@@ -150,7 +144,7 @@ def miner():
         miner_worker_addr, miner_control0, miner_control0_addr)
     cursor_miner.execute(sql)
     conn_miner.commit()
-    logger.info("获取miner info 成功")
+    logger.info("更新miner info 成功")
 
     # 获取钱包信息，导入数据库
     walletlist = daemon_get_json("WalletList", [])
@@ -205,7 +199,7 @@ if __name__ == '__main__':
     # global DAEMON_URL, MINER_URL, MINER_TOKEN, DAEMON_TOKEN
     empty_tipsetkey = []
     config = configparser.ConfigParser()
-    config.read(".\config\config.conf", encoding="utf-8")
+    config.read("./config/config.conf", encoding="utf-8")
     miner_api_ip = config.get("MINER_API", "MINER_API_IP")
     miner_api_port = config.get("MINER_API", "MINER_API_PORT")
     MINER_TOKEN = config.get("MINER_API", "MINER_API_TOKEN")
@@ -220,7 +214,12 @@ if __name__ == '__main__':
 
     _thread.start_new_thread(height, ("height", 2))
 
+    db_info = readConf_db()
+    conn_miner = pymysql.connect(db_info['db_host'], db_info['db_user'], db_info['db_password'], db=db_info['db_name'],
+                                 port=db_info['db_port'])
+    cursor_miner = conn_miner.cursor()
+
     while 1:
-       miner()
+       miner(cursor_miner)
 
 # 访问 https://www.jetbrains.com/help/pycharm/ 获取 PyCharm 帮助
